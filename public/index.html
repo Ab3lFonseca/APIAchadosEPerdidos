@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Achados e Perdidos</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f9f5ff;
+      color: #333;
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    h1 {
+      text-align: center;
+      color: #7c3aed;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+      background: #fff;
+      padding: 1.5rem;
+      border-radius: 1rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      margin-bottom: 2rem;
+    }
+
+    input, textarea, button {
+      padding: 0.7rem;
+      border: 1px solid #ccc;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+    }
+
+    button {
+      background-color: #a3e635;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background-color: #84cc16;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    li {
+      background: #fff;
+      margin-bottom: 1rem;
+      padding: 1rem;
+      border-radius: 0.8rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .actions {
+      margin-top: 0.5rem;
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .actions button {
+      flex: 1;
+      font-size: 0.9rem;
+    }
+
+    .edit-btn {
+      background-color: #c4b5fd;
+    }
+
+    .edit-btn:hover {
+      background-color: #a78bfa;
+    }
+
+    .delete-btn {
+      background-color: #fca5a5;
+    }
+
+    .delete-btn:hover {
+      background-color: #f87171;
+    }
+  </style>
+</head>
+<body>
+  <h1>Achados e Perdidos</h1>
+
+  <form id="itemForm">
+    <input type="text" id="nome" placeholder="Nome do item" required />
+    <textarea id="descricao" placeholder="Descrição" required></textarea>
+    <input type="date" id="data" required />
+    <input type="text" id="local" placeholder="Local encontrado" required />
+    <button type="submit">Adicionar</button>
+  </form>
+
+  <ul id="lista"></ul>
+
+  <script>
+    const form = document.getElementById('itemForm');
+    const lista = document.getElementById('lista');
+    let editandoId = null;
+
+    async function carregarItens() {
+      const res = await fetch('/itens');
+      const itens = await res.json();
+
+      lista.innerHTML = '';
+      itens.forEach(item => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <strong>${item.nome}</strong><br/>
+          ${item.descricao}<br/>
+          <small>${item.data} - ${item.local}</small>
+          <div class="actions">
+            <button class="edit-btn" onclick="editarItem(${item.id})">Editar</button>
+            <button class="delete-btn" onclick="excluirItem(${item.id})">Excluir</button>
+          </div>
+        `;
+        lista.appendChild(li);
+      });
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const item = {
+        nome: form.nome.value,
+        descricao: form.descricao.value,
+        data: form.data.value,
+        local: form.local.value,
+      };
+
+      if (editandoId) {
+        await fetch(`/itens/${editandoId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(item),
+        });
+        editandoId = null;
+      } else {
+        await fetch('/itens', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(item),
+        });
+      }
+
+      form.reset();
+      carregarItens();
+    });
+
+    window.editarItem = async (id) => {
+      const res = await fetch(`/itens`);
+      const itens = await res.json();
+      const item = itens.find(i => i.id === id);
+      if (!item) return;
+
+      form.nome.value = item.nome;
+      form.descricao.value = item.descricao;
+      form.data.value = item.data;
+      form.local.value = item.local;
+      editandoId = id;
+    };
+
+    window.excluirItem = async (id) => {
+      if (confirm('Tem certeza que deseja excluir este item?')) {
+        await fetch(`/itens/${id}`, { method: 'DELETE' });
+        carregarItens();
+      }
+    };
+
+    carregarItens();
+  </script>
+</body>
+</html>
